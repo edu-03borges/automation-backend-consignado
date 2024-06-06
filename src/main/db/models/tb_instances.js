@@ -32,7 +32,7 @@ const TbInstance = sequelize.define('tb_instances', {
         allowNull: true
     },
     time_logged_in: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.FLOAT,
         allowNull: true
     },
     created_at: {

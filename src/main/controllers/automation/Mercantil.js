@@ -6,6 +6,9 @@ const dialog = require('dialog-node');
 const xlsx = require('xlsx');
 const fs = require('fs');
 
+const Campaign = require('../../db/models/tb_campaigns');
+const Instance = require('../../db/models/tb_instances');
+
 puppeteer.use(stealth());
 
 async function createXlsx(nome, data, headers) {
@@ -37,6 +40,9 @@ async function simulateProposal(page, cpf) {
 
     await page.goto('https://meu.bancomercantil.com.br/simular-proposta');
 
+    // Aguardar a pagína carregar
+    await sleep(3000);
+
     const selectorConvenio = {
         id: '#mat-select-0',
         id_option: '#mat-option-6'
@@ -55,24 +61,27 @@ async function simulateProposal(page, cpf) {
     const buttonConsultar = 'button.mat-flat-button.mat-button-base';
     const buttonNovaOperacao = 'a.mat-flat-button.mat-button-base';
 
-    await sleep(1000);
     await selectOption(page, selectorConvenio);
+
+    await sleep(1000);
+
     await selectOption(page, selectorInstituicao);
 
-    await page.waitForResponse(
-        response =>
-            response.url() === 'https://api.mercantil.com.br:8443/pcb/sitebff/api/Produtos/Convenio/161594/Correspondente/981863' &&
-            response.status() === 200
-    );
+    // await page.waitForResponse(
+    //     response =>
+    //         response.url() === 'https://api.mercantil.com.br:8443/pcb/sitebff/api/Produtos/Convenio/161594/Correspondente/981863' &&
+    //         response.status() === 200
+    // );
 
-    await sleep(500);
+    await sleep(2000);
     await selectOption(page, selectorUf);
 
+    await sleep(2000);
     await page.type('#mat-input-1', cpf, {
-        delay: 20
+        delay: 50
     });
 
-    await sleep(500);
+    await sleep(2000);
     await page.click(buttonConsultar);
 
     // await page.waitForResponse(
@@ -85,23 +94,23 @@ async function simulateProposal(page, cpf) {
     await sleep(3500);
     await page.click(buttonNovaOperacao);
 
-    await page.waitForResponse(
-        response => response.url().includes('https://api.mercantil.com.br:8443/pcb/sitebff/api/PropostasProspect/') &&
-            response.status() === 200
-    );
+    // await page.waitForResponse(
+    //     response => response.url().includes('https://api.mercantil.com.br:8443/pcb/sitebff/api/PropostasProspect/') &&
+    //         response.status() === 200
+    // );
 
     // Iniciar
     await sleep(10000);
     await page.click('a.mat-flat-button');
 
     // Simular
-    await page.waitForResponse(
-        response =>
-            response.url() === ('https://api.mercantil.com.br:8443/pcb/sitebff/api/Produtos/Convenio/161594/Correspondente/981863/Empresa/4/SiglaUf/SC/ModalidadeCredito/SaqueAniversarioFgts') &&
-            response.status() === 200
-    );
+    // await page.waitForResponse(
+    //     response =>
+    //         response.url() === ('https://api.mercantil.com.br:8443/pcb/sitebff/api/Produtos/Convenio/161594/Correspondente/981863/Empresa/4/SiglaUf/SC/ModalidadeCredito/SaqueAniversarioFgts') &&
+    //         response.status() === 200
+    // );
 
-    await sleep(1500);
+    await sleep(2000);
 
     const isButtonDisabled = await page.evaluate(() => {
         const button = document.querySelector('button.mat-flat-button.mat-button-disabled');
@@ -113,13 +122,13 @@ async function simulateProposal(page, cpf) {
 
     await page.click('button.mat-flat-button');
 
-    await page.waitForResponse(
-        response =>
-            response.url() === 'https://api.mercantil.com.br:8443/pcb/sitebff/api/Simulacoes/ParcelaInformada' &&
-            response.status() === 200
-    );
+    // await page.waitForResponse(
+    //     response =>
+    //         response.url() === 'https://api.mercantil.com.br:8443/pcb/sitebff/api/Simulacoes/ParcelaInformada' &&
+    //         response.status() === 200
+    // );
 
-    await sleep(1000);
+    await sleep(3000);
     const valorLiberado = await page.evaluate(() => {
         const elemento = document.querySelector('.valorLiberado');
         return elemento.textContent.trim();
@@ -133,7 +142,7 @@ async function simulateProposal(page, cpf) {
     return { cpf, valorLiberado, valorGarantia };
 }
 
-async function Mercantil({ password, user, data }) {
+async function Mercantil({ password, user, instanceNumber, timeLoggedIn, idCampaign, data }) {
     try {
 
         // if (!data.cpfs.length) return response.status(200).send('Nenhum cpf para consulta!');
@@ -149,23 +158,29 @@ async function Mercantil({ password, user, data }) {
         await page.goto('https://meu.bancomercantil.com.br/login');
         await page.setViewport({ width: 1200, height: 700 });
 
-        await sleep(2000);
+        await sleep(1000);
         await page.type('#mat-input-0', user);
 
         await page.type('#mat-input-1', password);
 
-        dialog.question("Você já realizou o captch?", "<Info>", 0, async (code, retVal, stderr) => {
+        dialog.question("Você já logou?", "<Info>", 0, async (code, retVal, stderr) => {
 
             if (retVal == "OK") {
+
+                const start_time = process.hrtime();
+
                 // page.on('response', async (response) => {
                 //     const url = response.url();
                 //     console.log(`Recebeu uma resposta da URL: ${url}`);
                 // });
 
+                // await page.click('button.mat-flat-button');
+
                 const saldoCpfs = [];
                 const cpfsErros = [];
 
                 let cpf_regex;
+                
                 for (const info of data) {
 
                     try {
@@ -185,18 +200,77 @@ async function Mercantil({ password, user, data }) {
 
                 await browser.close();
 
-                return {
-                    cpfsComErros: bufferCpfsErros.toString('base64'),
-                    cpfsComSaldos: bufferCpfsSaldos.toString('base64'),
-                    status: false,
-                };
-            } else {
+                const end_time = process.hrtime(start_time);
 
+                const executionTime = (end_time[0] * 1000) + (end_time[1] / 1e6);
+
+                await Instance.update(
+                    {
+                        status: 'LIVRE',
+                        time_logged_in: timeLoggedIn + executionTime
+                    },
+                    {
+                        where: {
+                            instance: instanceNumber
+                        }
+                    }
+                );
+
+                await Campaign.update(
+                    {
+                        status: 'CONCLUÍDA',
+                        xlsx_success: bufferCpfsSaldos.toString('base64'),
+                        xlsx_error: bufferCpfsErros.toString('base64')
+                    },
+                    {
+                        where: {
+                            id: idCampaign
+                        }
+                    }
+                );
+            } else {
+                await Instance.update(
+                    { status: 'LIVRE' },
+                    {
+                        where: {
+                            instance: instanceNumber,
+                        }
+                    }
+                );
+
+                await Campaign.update(
+                    {
+                        status: 'CANCELADA',
+                    },
+                    {
+                        where: {
+                            id: idCampaign
+                        }
+                    }
+                );
             }
         });
 
     } catch (error) {
-        console.error(error)
+        await Instance.update(
+            { status: 'LIVRE' },
+            {
+                where: {
+                    instance: instanceNumber,
+                }
+            }
+        );
+
+        await Campaign.update(
+            {
+                status: 'CANCELADA',
+            },
+            {
+                where: {
+                    id: idCampaign
+                }
+            }
+        );
     }
 }
 

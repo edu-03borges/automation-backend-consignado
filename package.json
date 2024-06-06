@@ -2,9 +2,15 @@
   "name": "automation-backend-consignado",
   "version": "1.0.0",
   "description": "",
+  "bin": "./src/server.js",
   "main": "./src/server.js",
   "scripts": {
     "dev": "nodemon ./src/server.js"
+  },
+  "pkg": {
+    "targets": [
+      "node18"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -16,8 +22,10 @@
     "cors": "^2.8.5",
     "dialog-node": "^0.2.1",
     "express": "^4.19.2",
+    "global": "^4.4.0",
     "pg": "^8.12.0",
     "pg-hstore": "^2.3.4",
+    "pkg": "^5.8.1",
     "puppeteer": "^22.10.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",

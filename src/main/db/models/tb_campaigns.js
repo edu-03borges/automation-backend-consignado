@@ -31,6 +31,14 @@ const TbCampaign = sequelize.define('tb_campaigns', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    xlsx_success: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    xlsx_error: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         allowNull: true,
