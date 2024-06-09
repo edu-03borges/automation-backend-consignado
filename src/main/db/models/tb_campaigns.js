@@ -39,6 +39,10 @@ const TbCampaign = sequelize.define('tb_campaigns', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    query_data: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         allowNull: true,
